@@ -1,12 +1,14 @@
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
 
-const UserSchema = new mongoose.Schema({
-  user_id: {
+
+const userSchema = new mongoose.Schema({
+  name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
-  user_name: {
+  email:{
     type: String,
     required: true
   },
@@ -15,11 +17,9 @@ const UserSchema = new mongoose.Schema({
       user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
       },
       saved_name: {
         type: String,
-        required: true
       }
     }
   ],
@@ -32,16 +32,13 @@ const UserSchema = new mongoose.Schema({
   },
   phone_no: {
     type: String,
-    required: true
   },
   avatar: {
     public_id: {
       type: String,
-      required: true
     },
     secure_url: {
       type: String,
-      required: true
     }
   },
   status: {
@@ -73,4 +70,22 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
-export default mongoose.model('User', UserSchema);
+
+userSchema.methods = {
+  jwtToken(){
+      return jwt.sign(
+          {id:this._id,email:this.email},
+          process.env.SECRET,
+          {expiresIn:'10d'}
+      )
+  },
+  refreshToken(){
+      return jwt.sign(
+          {id:this._id,email:this.email},
+          process.env.REFRESH_SECRET,
+          {expiresIn:'30d'}
+      )
+  }
+}
+
+export default mongoose.model('User', userSchema);

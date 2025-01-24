@@ -5,12 +5,35 @@ yarn-debug.log*
 yarn-error.log*
 
 # Logs
-logs
+logs/
 *.log
+debug.log
 
-# React build
+# Environment variables
+.env
+
+# Build files
 frontend/build/
+backend/build/
 
-# OS files
+# OS-specific
 .DS_Store
 Thumbs.db
+
+# IDE-specific
+.idea/
+.vscode/
+*.iml
+
+# React specific
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Temporary files
+*.swp
+*.lock
+*.tmp
