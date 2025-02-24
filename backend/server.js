@@ -12,6 +12,8 @@ connectToDb();
 const app = express();
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 app.use(cors({
     origin: "http://localhost:5173",
@@ -30,6 +32,10 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
     console.log("A user connected");
+
+    socket.on('sendMessage', (message) => {
+        io.emit('receiveMessage', message);
+    });
 
     socket.on('disconnect', () => {
         console.log("A user disconnected");

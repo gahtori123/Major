@@ -23,6 +23,14 @@ const userSchema = new mongoose.Schema({
       }
     }
   ],
+  blocked_contacts: [
+    {
+      user_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      }
+    }
+  ],
   about: {
     about: String,
     timestamp: {
@@ -41,6 +49,7 @@ const userSchema = new mongoose.Schema({
       type: String,
     }
   },
+
   status: {
     online: {
       type: Boolean,
@@ -50,14 +59,6 @@ const userSchema = new mongoose.Schema({
       type: Date
     }
   },
-  blocked_contacts: [
-    {
-      user_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-      }
-    }
-  ],
   timestamp: {
     created_at: {
       type: Date,

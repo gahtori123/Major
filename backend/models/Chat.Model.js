@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const ChatSchema = new mongoose.Schema({
     is_group_chat: {
         type: Boolean,
-        required: true
+        default: false
     },
     members: [
         {
@@ -23,7 +23,18 @@ const ChatSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Message'
         }
-    ]
+    ],
+    lastMessage: {
+        senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        message: String,
+        timestamp: Date
+    },
+    group_name: {
+        type: String,
+    },
+    group_image:{
+        type: String
+    }
 });
 
 export default mongoose.model('Chat', ChatSchema);
