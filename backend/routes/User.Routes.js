@@ -1,4 +1,4 @@
-import { addMembersToGroup, createChat, createContactList, editContactDetails, fetchChats, getMessages, googleSignUp, sendMessage } from "../controllers/User.Controllers.js";
+import { addMembersToGroup, createChat, createContactList, editContactDetails, fetchChats, getMessages, googleSignUp, search, sendMessage } from "../controllers/User.Controllers.js";
 import {Router} from 'express';
 
 const router = Router();
@@ -11,6 +11,7 @@ router.post("/addMembersToGroup",addMembersToGroup)
 router.post("/fetchChats", fetchChats);
 router.post("/sendMessage", sendMessage);
 router.post("/getMessages",getMessages);
+router.post("/search",search);
 router.all("*",()=>{
     console.log("in last route");
     return;

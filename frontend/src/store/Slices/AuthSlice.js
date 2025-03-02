@@ -10,12 +10,11 @@ const initialState = {
     status: "idle",
     error: null,
     messagesData: [],
+    searchData:[],
 }
 
 export const googleLogin = createAsyncThunk("auth/googleLogin", async (tokenId) => {
     try {
-        console.log("tokenId in thunk :", tokenId);
-
         const res = await toast.promise(
             axiosInstance.post("/user/google/auth", tokenId, { withCredentials: true }),
             {
@@ -25,13 +24,30 @@ export const googleLogin = createAsyncThunk("auth/googleLogin", async (tokenId) 
             }
         );
 
-        console.log("data in thunk :", res.data);
         return res.data;
     } catch (error) {
         toast.error(error.response?.data?.message || "An error occurred during login");
         throw error;
     }
 });
+
+export const AddContactIn = createAsyncThunk("auth/AddContact", async ({ email, name, id }) => {
+    try {
+        const res = await toast.promise(
+            axiosInstance.post("/user/createContactList", { email, user_id:id,name }, { withCredentials: true }),
+            {
+                loading: "Adding contact...",
+                success: "Added contact successfully!",
+                error: "Failed to add contact!",
+            }
+        );
+
+        return res.data;
+    } catch (error) {
+        toast.error(error.response?.data?.message || "An error occurred during login");
+        throw error;
+    }
+})
 
 export const fetchChats = createAsyncThunk("auth/chatList", async (userId) => {
     try {
@@ -51,7 +67,24 @@ export const fetchChats = createAsyncThunk("auth/chatList", async (userId) => {
     }
 })
 
-export const selectChat = createAsyncThunk("auth/selectChat", async ({ chat_id, userId }) => {
+export const searchBarContent =  createAsyncThunk("auth/searchBarContent", async ({ userId, content }) => {
+    try {
+        const res = await toast.promise(
+            axiosInstance.post("/user/search", { userId, content }, { withCredentials: true }),
+            {
+                loading: "Searching...",
+                success: "Searched successfully!",
+                error: "Failed to search!",
+            }
+        );
+
+        return res.data;
+    } catch (error) {
+        toast.error(error.response?.data?.message || "An error occurred while searching");
+        throw error;
+    }
+})
+export const selectChat = createAsyncThunk("auth/selectChat", async ({ chat_id, userId}) => {
     try {
         const res = await toast.promise(
             axiosInstance.post("/user/getMessages", { chat_id, userId }, { withCredentials: true }),
@@ -62,9 +95,29 @@ export const selectChat = createAsyncThunk("auth/selectChat", async ({ chat_id, 
             }
         );
 
-        return res.data;
+        return res;
     } catch (error) {
-        toast.error(error.response?.data?.message || "An error occurred during login");
+        toast.error(error.response?.data?.message || "An error occurred while selecting chat");
+        throw error;
+    }
+})
+
+export const createChat = createAsyncThunk("auth/createChat", async ({ userId, users }) => {
+    try
+    {
+        console.log("users",users)
+        const res = await toast.promise(
+            axiosInstance.post("/user/createChat", { initiator_id:userId,user_id_array: users }, { withCredentials: true }),
+            {
+                loading: "Creating chat...",
+                success: "Created chat successfully!",
+                error: "Failed to create chat!",
+            }
+        );
+
+        return res.data;
+    }catch(error){
+        toast.error(error.response?.data?.message || "an error occurred while initiating chat");
         throw error;
     }
 })
@@ -91,7 +144,9 @@ const authSlice = createSlice({
     name: "auth",
     initialState,
     reducers: {
-
+        clearSearchData:(state)=>{
+            state.searchData=[]
+        },
     },
 
     extraReducers: (builder) => {
@@ -100,7 +155,6 @@ const authSlice = createSlice({
                 if (action?.payload) {
                     state.isLoggedIn = true;
                     state.user = action?.payload?.data;
-                    console.log("bro here action.payload.data ", action.payload.data);
                     localStorage.setItem('user', JSON.stringify(action?.payload?.data));
                     localStorage.setItem('isLoggedIn', true);
                 }
@@ -110,23 +164,21 @@ const authSlice = createSlice({
                 state.status = "loading";
             })
             .addCase(fetchChats.fulfilled, (state, action) => {
-                // console.log("Fetched chats: ", action.payload.data);
                 state.status = "succeeded";
                 state.chatList = action.payload.data || [];
             })
+
             .addCase(fetchChats.rejected, (state, action) => {
                 state.status = "failed";
                 state.error = action.error.message;
             })
 
             .addCase(selectChat.fulfilled, (state, action) => {
-                state.selectedChat = action.meta.arg;
-                state.messagesData = action.payload.data;
-                console.log("Selected chat: ", action.payload.data);
+                state.selectedChat = action.payload.data.chatData;
+                state.messagesData = action.payload.data.data;
             })
 
             .addCase(sendMessage.fulfilled, (state, action) => {
-                console.log("Sent message: ", action.payload.data);
 
                 state.chatList = state.chatList.map((chat) => {
                     if (chat._id === action.meta.arg.chat_id) {
@@ -143,10 +195,13 @@ const authSlice = createSlice({
                 });
 
                 state.messagesData.push(action.payload.data);
-            });
+            })
 
-
+            .addCase(searchBarContent.fulfilled, (state, action) => {
+                state.searchData = action.payload.data;
+                console.log("search data", state.searchData);
+            })
     }
 });
-
+export const{clearSearchData} = authSlice.actions
 export default authSlice.reducer;

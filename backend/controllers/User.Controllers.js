@@ -3,6 +3,7 @@ import User from '../models/User.Model.js';
 import ChatModel from '../models/Chat.Model.js';
 import Message from '../models/Messages.Model.js';
 import mongoose from 'mongoose';
+import memory from 'multer/storage/memory.js';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -22,7 +23,6 @@ const googleSignUp = async (req, res) => {
         const { email, name, picture } = ticket.getPayload();
 
         let user = await User.findOne({ email });
-
         if (!user) {
             user = await User.create({
                 email,
@@ -105,6 +105,122 @@ const createContactList = async (req, res) => {
     }
 }
 
+const search = async (req, res) => {
+    const { content, userId } = req.body;
+    if (!content) {
+        return res.status(400).json({
+            success: false,
+            message: "Content is required"
+        });
+    }
+
+    const regex = new RegExp(content, 'i');
+
+    try {
+        const users = await User.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+            { $unwind: "$user_contacts" },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user_contacts.user_id",
+                    foreignField: "_id",
+                    as: "user_details"
+                }
+            },
+            { $unwind: "$user_details" },
+            {
+                $match: {
+                    $or: [
+                        { "user_contacts.saved_name": regex },
+                        { "user_details.email": regex }
+                    ]
+                }
+            },
+            {
+                $lookup: {
+                    from: "chats",
+                    let: { searcherId: "$_id", contactId: "$user_details._id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $gt: [{ $size: "$members" }, 0] },
+                                        { $in: ["$$searcherId", "$members.user_id"] },
+                                        { $in: ["$$contactId", "$members.user_id"] }
+                                    ]
+                                }
+                            }
+                        },
+                        { $project: { _id: 1 } }
+                    ],
+                    as: "chat_info"
+                }
+            },
+            {
+                $project: {
+                    "user_contacts.user_id": "$user_details",
+                    "user_contacts.saved_name": 1,
+                    "chat_id": { $arrayElemAt: ["$chat_info._id", 0] }
+                }
+            }
+        ]);
+
+        const grp_data = await ChatModel.aggregate([
+            {
+                $match: {
+                    members: {
+                        $elemMatch: {
+                            user_id: new mongoose.Types.ObjectId(userId)
+                        }
+                    },
+                    group_name: regex
+                }
+            },
+            {
+                $project: {
+                    chat_id: "$_id",
+                    dp: "$group_image",
+                    name: "$group_name",
+                    lastMessage: 1
+                }
+
+            }
+        ]
+        );
+
+        const result = await Promise.all(users.map(async (user) => {
+            const message = await ChatModel.findById(user.chat_id).select("lastMessage");
+            return {
+                name: user.user_contacts.saved_name
+                    ? user.user_contacts.saved_name
+                    : user.user_contacts.user_id.name,
+                dp: user.user_contacts.user_id.avatar?.secure_url,
+                chat_id: user.chat_id,
+                lastMessage: message.lastMessage,
+                receive_id: user.user_contacts.user_id._id
+            };
+        }));
+
+        const data = [...result, ...grp_data];
+        return res.status(200).json({
+            success: true,
+            data: data,
+            message: "Search successful"
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Something went wrong while searching"
+        });
+    }
+};
+
+
+
+
 const editContactDetails = async (req, res) => {
     const { user_id, contact_id, saved_name } = req.body;
     const user = await User.findById(user_id);
@@ -166,7 +282,6 @@ const createChat = async (req, res) => {
             const objectIds = user_id_array.map((id) =>
                 new mongoose.Types.ObjectId(id)
             );
-
             const chatExist = await ChatModel.findOne({
                 is_group_chat: false,
                 members: {
@@ -307,7 +422,7 @@ const sendMessage = async (req, res) => {
             });
         }
 
-        const newMessage =  await Message.create({
+        const newMessage = await Message.create({
             message,
             sender_user_id: new mongoose.Types.ObjectId(sender_user_id),
             attachments,
@@ -350,6 +465,7 @@ const sendMessage = async (req, res) => {
 };
 
 const getMessages = async (req, res) => {
+    //frontend is requiring the name and dp to display so i will attach it with response
     const { chat_id, userId } = req.body;
 
     if (!chat_id) {
@@ -383,6 +499,7 @@ const getMessages = async (req, res) => {
                 message: "Chat not found",
             });
         }
+
         //if user is in contact list we will update the user name and display that name in chat
         const user = await User.findById(userId);
         const userContacts = user.user_contacts;
@@ -392,13 +509,36 @@ const getMessages = async (req, res) => {
                 message.sender_user_id.name = contact.saved_name;
             }
         });
+        const chatData = {}
 
+        if (chat.is_group_chat) {
+            chatData.dp = chat.group_image,
+                chatData.name = chat.group_name
+        }
+        else {
+            const other_user = chat.members.filter((member) => {
+                return member.user_id.toString() !== userId.toString();
+            });
+
+            if (other_user.length > 0) {
+                const second_user = await User.findById(other_user[0].user_id);
+
+                const isSaved = user.user_contacts.find(contact =>
+                    contact.user_id.equals(second_user?._id)
+                );
+
+                chatData.name = isSaved ? isSaved.saved_name : second_user?.name;
+                chatData.dp = second_user?.avatar?.secure_url;
+            }
+        }
+        chatData.chat_id = chat_id;
         // Sort messages by creation date
         const sortedMessages = chat.messages.sort(
             (a, b) => new Date(a.timestamp.created_at) - new Date(b.timestamp.created_at)
         );
         return res.status(200).json({
             success: true,
+            chatData: chatData,
             data: sortedMessages,
         });
     } catch (err) {
@@ -426,7 +566,6 @@ const fetchChats = async (req, res) => {
         });
 
         const user = await User.findById(objId);
-
         for (const chat of chats) {
             if (chat.is_group_chat) {
                 chat.name = chat.group_name;
@@ -456,5 +595,6 @@ export {
     addMembersToGroup,
     sendMessage,
     getMessages,
-    fetchChats
+    fetchChats,
+    search
 }

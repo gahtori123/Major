@@ -26,7 +26,10 @@ const ChatSchema = new mongoose.Schema({
     ],
     lastMessage: {
         senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        message: String,
+        message: {
+            type:String,
+            default:"no messages yet"
+        },
         timestamp: Date
     },
     group_name: {

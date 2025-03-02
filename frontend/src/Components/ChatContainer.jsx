@@ -11,7 +11,6 @@ const ChatContainer = () => {
   const [message, setMessage] = useState("");
   const sender_user_id = useSelector((state) => state.auth.user._id);
   const dispatch = useDispatch();
-
   useEffect(() => {
     socket.on('receiveMessage', (message) => {
       dispatch(sendMessage(message));
@@ -30,18 +29,23 @@ const ChatContainer = () => {
 
   if (!selectedChat) return <p className="p-4">Select a chat to start messaging</p>;
 
-  console.log("Selected chat: ", selectedChat);
-
   const handleSendMessage = () => {
     const messageData = { sender_user_id, chat_id: selectedChat.chat_id, message };
     socket.emit('sendMessage', messageData);
     setMessage("");
   };
-
+  console.log("message data", messagesData)
   return (
-    <div className="w-2/3 p-4 flex flex-col h-[90vh]">
+    <div className="w-2/3 p-4 flex flex-col h-[92vh]">
+      <div className="flex items-center border-b border-gray-300 p-2">
+        <img
+          src={selectedChat?.dp || "/default-avatar.png"}
+          alt="Chat DP"
+          className="w-10 h-10 rounded-full mr-3 object-cover"
+        />
       <h2 className="text-xl font-bold border-b pb-2">{selectedChat?.name}</h2>
-      <div className="flex-1 overflow-y-auto mt-4 px-2">
+      </div>
+      <div className="flex-1 overflow-y-auto mt-4 pl-2 pr-4" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {messagesData && messagesData.length > 0 ? (
           messagesData.map((message) => (
             <Message key={message._id} message={message} />
