@@ -95,7 +95,7 @@ export const selectChat = createAsyncThunk("auth/selectChat", async ({ chat_id, 
             }
         );
 
-        return res;
+        return res.data;
     } catch (error) {
         toast.error(error.response?.data?.message || "An error occurred while selecting chat");
         throw error;
@@ -122,23 +122,23 @@ export const createChat = createAsyncThunk("auth/createChat", async ({ userId, u
     }
 })
 
-export const sendMessage = createAsyncThunk("auth/sendMessage", async ({ sender_user_id, chat_id, message }) => {
-    try {
-        const res = await toast.promise(
-            axiosInstance.post("/user/sendMessage", { sender_user_id, chat_id, message }, { withCredentials: true }),
-            {
-                loading: "Sending message...",
-                success: "Sent message successfully!",
-                error: "Failed to send message!",
-            }
-        );
+// export const sendMessage = createAsyncThunk("auth/sendMessage", async ({ sender_user_id, chat_id, message }) => {
+//     try {
+//         const res = await toast.promise(
+//             axiosInstance.post("/user/sendMessage", { sender_user_id, chat_id, message }, { withCredentials: true }),
+//             {
+//                 loading: "Sending message...",
+//                 success: "Sent message successfully!",
+//                 error: "Failed to send message!",
+//             }
+//         );
 
-        return res.data;
-    } catch (error) {
-        toast.error(error.response?.data?.message || "An error occurred during login");
-        throw error;
-    }
-})
+//         return res.data;
+//     } catch (error) {
+//         toast.error(error.response?.data?.message || "An error occurred during login");
+//         throw error;
+//     }
+// })
 
 const authSlice = createSlice({
     name: "auth",
@@ -146,6 +146,25 @@ const authSlice = createSlice({
     reducers: {
         clearSearchData:(state)=>{
             state.searchData=[]
+        },
+        receiveMessage: (state, action) => {
+            const newMessage = action.payload;
+            console.log("new message",newMessage);
+            state.chatList = state.chatList.map((chat) => {
+                if (chat._id === newMessage.chat_id) {
+                    return {
+                        ...chat,
+                        lastMessage: {
+                            message: newMessage.message,
+                            timestamp: newMessage.timestamp,
+                            senderId: newMessage.sender_user_id._id,
+                        },
+                    };
+                }
+                return chat;
+            });
+
+            state.messagesData.push(newMessage);
         },
     },
 
@@ -174,28 +193,28 @@ const authSlice = createSlice({
             })
 
             .addCase(selectChat.fulfilled, (state, action) => {
-                state.selectedChat = action.payload.data.chatData;
-                state.messagesData = action.payload.data.data;
+                state.selectedChat = action.payload.chatData;
+                state.messagesData = action.payload.data;
             })
 
-            .addCase(sendMessage.fulfilled, (state, action) => {
+            // .addCase(sendMessage.fulfilled, (state, action) => {
 
-                state.chatList = state.chatList.map((chat) => {
-                    if (chat._id === action.meta.arg.chat_id) {
-                        return {
-                            ...chat,
-                            lastMessage: {
-                                message: action.payload.data.message,
-                                timestamp: action.payload.data.timestamp,
-                                senderId: action.payload.data.sender_user_id._id,
-                            },
-                        };
-                    }
-                    return chat;
-                });
+            //     state.chatList = state.chatList.map((chat) => {
+            //         if (chat._id === action.meta.arg.chat_id) {
+            //             return {
+            //                 ...chat,
+            //                 lastMessage: {
+            //                     message: action.payload.data.message,
+            //                     timestamp: action.payload.data.timestamp,
+            //                     senderId: action.payload.data.sender_user_id._id,
+            //                 },
+            //             };
+            //         }
+            //         return chat;
+            //     });
 
-                state.messagesData.push(action.payload.data);
-            })
+            //     state.messagesData.push(action.payload.data);
+            // })
 
             .addCase(searchBarContent.fulfilled, (state, action) => {
                 state.searchData = action.payload.data;
@@ -203,5 +222,5 @@ const authSlice = createSlice({
             })
     }
 });
-export const{clearSearchData} = authSlice.actions
+export const{clearSearchData,receiveMessage} = authSlice.actions
 export default authSlice.reducer;

@@ -404,6 +404,7 @@ const addMembersToGroup = async (req, res) => {
 
 
 const sendMessage = async (req, res) => {
+    console.log("REQ.BODY",req.body)
     const { sender_user_id, message, attachments, chat_id } = req.body;
     if (!chat_id || !sender_user_id || !message) {
         return res.status(400).json({
@@ -451,16 +452,69 @@ const sendMessage = async (req, res) => {
             });
         }
         const data = await newMessage.populate('sender_user_id', 'name avatar');
+        const messageData = data.toObject();
+        messageData.chat_id = chat_id;
         return res.status(201).json({
             success: true,
             message: "Message sent successfully",
-            data: data,
+            data: messageData,
         });
     } catch (err) {
         return res.status(500).json({
             success: false,
             message: err.message || "Something went wrong while sending the message",
         });
+    }
+};
+
+export const sendMessageToDB = async ({ sender_user_id, message, attachments, chat_id }) => {
+    if (!chat_id || !sender_user_id || !message) {
+        throw new Error("Something went wrong while sending the message");
+    }
+
+    try {
+        if (!mongoose.Types.ObjectId.isValid(chat_id) ||
+            !mongoose.Types.ObjectId.isValid(sender_user_id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid ID format"
+            });
+        }
+
+        const newMessage = await Message.create({
+            message,
+            sender_user_id: new mongoose.Types.ObjectId(sender_user_id),
+            attachments,
+        });
+
+        const chat = await ChatModel.findByIdAndUpdate(
+            chat_id,
+            {
+                $push: { messages: newMessage._id },
+                $set: {
+                    lastMessage: {
+                        senderId: sender_user_id,
+                        message,
+                        timestamp: new Date()
+                    }
+                }
+            },
+            { new: true, useFindAndModify: false }
+        );
+
+        if (!chat) {
+            await Message.deleteOne({ _id: newMessage._id });
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found",
+            });
+        }
+        const data = await newMessage.populate('sender_user_id', 'name avatar');
+        const messageData = data.toObject();
+        messageData.chat_id = chat_id;
+        return messageData;
+    } catch (err) {
+        throw new Error(err.message || "Something went wrong while sending the message");
     }
 };
 
@@ -577,11 +631,18 @@ const fetchChats = async (req, res) => {
                 chat.dp = member.avatar.secure_url;
             }
         }
+        //something is wrong with the ordering of chats while sorting fix it
+        // console.log(chats);
+        // const newchats = chats.sort(
+        //     (a, b) => new Date(a.lastMessage?.timestamp.created_at) - new Date(b.lastMessage?.timestamp.created_at)
+        // );
+        // console.log("newchats",newchats)
         res.status(200).json({
             success: true,
             data: chats
         });
     } catch (error) {
+        console.log(error.message)
         res.status(500).json({ message: "Server error" });
     }
 };

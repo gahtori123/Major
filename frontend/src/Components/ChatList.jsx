@@ -4,18 +4,25 @@ import ChatItem from "./ChatItem";
 import { fetchChats } from "../store/Slices/AuthSlice";
 import AddContact from "./AddContact";
 import SearchBar from "./SearchBar";
+import socket from "../socket/socket";
 
 const ChatList = () => {
     const dispatch = useDispatch();
     const userId = useSelector((state) => state.auth.user?._id);
+    const messagesData = useSelector((state) => state.auth.messagesData);
     const { chatList, status, error } = useSelector((state) => state.auth);
-
     useEffect(() => {
         if (userId) {
             dispatch(fetchChats(userId));
         }
-    }, [dispatch, userId]);
-    console.log("chatList",chatList);
+    }, [dispatch, userId, messagesData]);
+
+    useEffect(()=>{
+        if(chatList.length>0){
+            const chat_ids = chatList.map((chat)=>(chat._id));
+            socket.emit("join-rooms",chat_ids)
+        }
+    },[chatList])
     if (status === "loading") return <p>Loading chats...</p>;
     if (status === "failed") return <p>Error: {error}</p>;
 

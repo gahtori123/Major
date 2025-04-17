@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import cors from 'cors';
 import router from './routes/User.Routes.js';
+import { sendMessage, sendMessageToDB } from './controllers/User.Controllers.js';
 
 config();
 connectToDb();
@@ -33,12 +34,26 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
     console.log("A user connected");
 
-    socket.on('sendMessage', (message) => {
-        io.emit('receiveMessage', message);
+    socket.on("join-rooms",(chat_ids)=>{
+        chat_ids.forEach(chat_id => {
+            socket.join(chat_id)
+            console.log("joined",chat_id);
+        });
+    })
+    socket.on('sendMessage',async (message) => {
+        const {chat_id} = message
+        const lastMessage = await sendMessageToDB(message)
+        io.to(chat_id).emit('receiveMessage', lastMessage);
     });
 
     socket.on('disconnect', () => {
         console.log("A user disconnected");
+    });
+
+    socket.on('isTyping', (data) => {
+        console.log("typing in backend ",data);
+        const { chat_id, typingUser } = data;
+        socket.to(chat_id).emit('typing', typingUser);
     });
 });
 
