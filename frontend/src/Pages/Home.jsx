@@ -8,7 +8,7 @@ function Home() {
   return (
     <>
       <div className='max-h-[100vh] '>
-        <Topbar />
+        <Topbar/>
         <div className='flex'>
           <Sidebar />
           <ChatList/>

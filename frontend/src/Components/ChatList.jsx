@@ -27,7 +27,7 @@ const ChatList = () => {
     if (status === "failed") return <p>Error: {error}</p>;
 
     return (
-        <div className="flex flex-col h-[92vh] w-1/3 border-r shadow-lg border-gray-300 bg-white">
+        <div className="flex flex-col h-[92vh] w-1/3 border-r shadow-lg border-gray-300 bg-slate-100">
             <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-100">
                 <h1 className="text-lg font-semibold text-gray-800">Chats</h1>
                 <AddContact />

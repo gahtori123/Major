@@ -583,6 +583,9 @@ const getMessages = async (req, res) => {
 
                 chatData.name = isSaved ? isSaved.saved_name : second_user?.name;
                 chatData.dp = second_user?.avatar?.secure_url;
+                chatData.about = second_user?.about;
+                chatData.email = second_user?.email;
+                chatData.phone_no = second_user?.phone_no;
             }
         }
         chatData.chat_id = chat_id;

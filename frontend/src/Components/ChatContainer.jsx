@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Message from "./Message";
 import socket from "../socket/socket";
 import { receiveMessage } from "../store/Slices/AuthSlice";
+import AboutContacts from "./AboutContacts.jsx";
 
 const ChatContainer = () => {
   const selectedChat = useSelector((state) => state.auth.selectedChat);
@@ -14,7 +15,7 @@ const ChatContainer = () => {
   const [typing, setTyping] = useState(false);
   const [showSchedulePopup, setShowSchedulePopup] = useState(false);
   const [scheduledDateTime, setScheduledDateTime] = useState("");
-
+  const [displayAbout, setDisplayAbout] = useState(false);
   useEffect(() => {
     socket.on('receiveMessage', (message) => {
       dispatch(receiveMessage(message));
@@ -69,11 +70,17 @@ const ChatContainer = () => {
 
     alert("Message scheduled successfully!");
   };
-
-
   return (
-    <div className="w-2/3 p-4 flex flex-col h-[92vh]">
-      <div className="flex items-center border-b border-gray-300 p-2">
+    <div className="w-2/3 p-4 flex flex-col h-[92vh] bg-slate-200 shadow-lg border-gray-300 rounded-md"
+      onClick={() => setDisplayAbout(false)}
+    >
+      <div className="flex items-center border-b border-gray-300 p-2"
+        onClick={(e) => {
+          e.stopPropagation();
+          setDisplayAbout(!displayAbout)
+        }
+        }
+      >
         <img
           src={selectedChat?.dp || "/default-avatar.png"}
           alt="Chat DP"
@@ -82,6 +89,9 @@ const ChatContainer = () => {
         <h2 className="text-xl font-bold border-b pb-2">{selectedChat?.name}</h2>
         {typing ? <p className="text-sm text-gray-500 ml-2">Typing...</p> : null}
       </div>
+      {displayAbout && (
+        <AboutContacts selectedChat={selectedChat}/>
+      )}
       <div className="flex-1 overflow-y-auto mt-4 pl-2 pr-4" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {messagesData && messagesData.length > 0 ? (
           messagesData.map((message) => (
